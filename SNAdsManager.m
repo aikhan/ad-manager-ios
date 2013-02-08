@@ -96,7 +96,9 @@ static SNAdsManager *sharedManager = nil;
         
         if(self.myConnectionStatus == kNotReachable){
             [self initializeAdNetworks];
-            [self performSelector:@selector(fetchAds)];//withObject:nil afterDelay:0.0];
+            [self fetchAds];
+            //[self performSelector:@selector(initializeAdNetworks) withObject:nil afterDelay:0.1];
+            //[self performSelector:@selector(fetchAds) withObject:nil afterDelay:0.4];
         }else{
         NSLog(@"!!!Offline!!!");
         }
@@ -113,8 +115,6 @@ static SNAdsManager *sharedManager = nil;
 
 - (void)fetchAds{
     DebugLog(@"%s", __PRETTY_FUNCTION__);
-   
-    
     
     GenericAd *chartBoostFullScreenAd = [[GenericAd alloc] initWithAdNetworkType:kChartBoost andAdType:kFullScreenAd];
     [self.currentAdsBucketArray addObject:chartBoostFullScreenAd];
@@ -200,6 +200,7 @@ static SNAdsManager *sharedManager = nil;
 
 -(void)startMobclix {
     [Mobclix startWithApplicationId:MOBCLIX_ID];
+   // [Mobclix startWithApplicationId:@"insert-your-application-key"];
 }
 
 - (void)startChartBoost{

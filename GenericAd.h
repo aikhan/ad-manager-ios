@@ -26,7 +26,9 @@
 
 @interface GenericAd : NSObject <MobclixFullScreenAdDelegate>
 
-
+{
+    MobclixFullScreenAdViewController* fullScreenAdViewController;
+}
 enum adNetworkType{
     kMobiClix,
     kChartBoost,
@@ -58,7 +60,7 @@ enum adType{
 @property(nonatomic, strong) RevMobBanner *revMobBannerAd;
 @property (nonatomic, retain) id <GenericAdDelegate> delegate;
 
-@property(nonatomic, strong)MobclixFullScreenAdViewController *mobClixFullScreenViewController;
+
 
 - (id) initWithAdNetworkType:(NSUInteger)adNetworkType andAdType:(NSUInteger)adType;
 - (id) initWithAdType:(NSUInteger)adType;

@@ -27,7 +27,7 @@
 @synthesize revMobFullScreenAd = _revMobFullScreenAd;
 @synthesize delegate = _delegate;
 @synthesize revMobBannerAd = _revMobBannerAd;
-@synthesize mobClixFullScreenViewController = _mobClixFullScreenViewController;
+//@synthesize mobClixFullScreenViewController = _mobClixFullScreenViewController;
 
 - (id) initWithAdNetworkType:(NSUInteger)adNetworkType andAdType:(NSUInteger)adType{
 	self = [super init];
@@ -40,6 +40,8 @@
                     _adPriority = kMobClixBannerAdPriority;
                 else if (adType == kFullScreenAd){
                     _adPriority = kMobClixFullScreenAdPriority;
+                    fullScreenAdViewController = [[MobclixFullScreenAdViewController alloc] init];
+                    fullScreenAdViewController.delegate = self;
                     [self prefetchMobClixFullScreenAd];
                 }
                 break;
@@ -206,14 +208,17 @@
 }
 
 -(void)prefetchMobClixFullScreenAd{
-    self.mobClixFullScreenViewController = [[MobclixFullScreenAdViewController alloc] init];
-    self.mobClixFullScreenViewController.delegate = self;
-    [self.mobClixFullScreenViewController requestAndDisplayAdFromViewController:[SNAdsManager getRootViewController]];
+   // [fullScreenAdViewController requestAd];
+    //TODO:Get this fixed
 }
 
 -(void)showMobClixFullScreenAd{
     NSLog(@"%s", __PRETTY_FUNCTION__);
-    [self.mobClixFullScreenViewController displayRequestedAdFromViewController:[SNAdsManager getRootViewController]];
+    UIViewController *rootViewController = [SNAdsManager getRootViewController];
+    NSAssert(rootViewController, @"Ad cannot be displayed without view controller");
+   // [fullScreenAdViewController displayRequestedAdFromViewController:rootViewController];
+    [fullScreenAdViewController requestAndDisplayAdFromViewController:rootViewController];
+
 }
 - (void)fullScreenAdViewController:(MobclixFullScreenAdViewController*)fullScreenAdViewController didFailToLoadWithError:(NSError*)error{
     //[self loadFullscreenAdWithLowerPriority];
