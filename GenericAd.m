@@ -95,7 +95,16 @@
 -(void)showBannerAd{
     switch(self.adNetworkType){
         case kRevMob:{
-            [[RevMobAds session] showBanner];
+            @try {
+                //[self.revMobBannerAd showAd];
+                [[RevMobAds session] showBanner];
+            }
+            @catch (NSException *exception) {
+                NSLog(@"%@", exception.reason);
+            }
+            @finally {
+                [[RevMobAds session] showBanner];
+            }
         }
             break;
     case kMobiClix:
@@ -107,24 +116,42 @@
     }
 }
 -(void)showFullScreenAd{
-    
+    NSLog(@"%s", __PRETTY_FUNCTION__);
     switch(self.adNetworkType){
         case kRevMob:
         {
             /*if ([self.revMobFullScreenAd respondsToSelector:@selector(showAd)]) {
-                [self.revMobFullScreenAd showAd];
+                
             }else{
              */ //This seems to fail sometimes I dont know the reason why even the respondsToSelector crashes ...?
-                [[RevMobAds session] showFullscreen];
+                // RevMob SDK have far too many problems
+                
            // }
-            
+            @try {
+                //[self.revMobFullScreenAd showAd];
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    [[RevMobAds session] showFullscreen];
+                });
+            }
+            @catch (NSException *exception) {
+                NSLog(@"%@", exception.reason);
+            }
+            @finally {
+                [[RevMobAds session] showFullscreen];
+            } 
         }
             break;
-        case kMobiClix:
-            [self showMobClixFullScreenAd];
+        case kMobiClix:{
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [self showMobClixFullScreenAd];
+            }); 
+        }
             break;
-        case kChartBoost:
-            [[SNAdsManager sharedManager].chartBoost showInterstitial];
+        case kChartBoost:{
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [[SNAdsManager sharedManager].chartBoost showInterstitial];
+            });
+        }
             break;
         default:
             [NSException raise:@"Undefined Ad Network" format:@"Ad Network is unknown or does not have a banner Ad."];
@@ -210,13 +237,14 @@
 -(void)prefetchMobClixFullScreenAd{
    // [fullScreenAdViewController requestAd];
     //TODO:Get this fixed
+   // [fullScreenAdViewController requestAd];
 }
 
 -(void)showMobClixFullScreenAd{
     NSLog(@"%s", __PRETTY_FUNCTION__);
     UIViewController *rootViewController = [SNAdsManager getRootViewController];
     NSAssert(rootViewController, @"Ad cannot be displayed without view controller");
-   // [fullScreenAdViewController displayRequestedAdFromViewController:rootViewController];
+    //[fullScreenAdViewController displayRequestedAdFromViewController:rootViewController];
     [fullScreenAdViewController requestAndDisplayAdFromViewController:rootViewController];
 
 }

@@ -40,9 +40,11 @@ typedef NS_ENUM(NSUInteger, adPriorityLevel){
 };
 
 typedef NS_ENUM(NSUInteger, ConnectionStatus) {
+   
+    kNotAvailable,
     kWANAvailable,
-    kWifiAvailable,
-    kNotAvailable
+    kWifiAvailable
+    
 };
 
 /*
@@ -60,6 +62,8 @@ typedef NS_ENUM(NSUInteger, ConnectionStatus) {
 
 #define kMobClixBannerAdPriority kPriorityNORMAL
 #define kMobClixFullScreenAdPriority kPriorityLOWEST
+
+#define kNumberOfAdNetworks 3
 
 @interface SNManager : NSObject
 

@@ -19,8 +19,7 @@
 
 
 
-/* CAUTION
- * Please Beware you cannot schedule not more than 64 notifications at one time
+/* CAUTION * Please Beware you cannot  not   64 notifications at one time
  * If there are more notifications and you also schedule testNotifications the
  * old notifications will get truncated.
  * So to be on safe side dont use this code in production code.

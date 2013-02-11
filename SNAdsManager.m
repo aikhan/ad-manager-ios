@@ -10,6 +10,7 @@
 #import "GenericAd.h"
 #import "Reachability.h"
 #import "Mobclix.h"
+#import "SNQueue.h"
 
 @interface SNAdsManager()
 
@@ -18,6 +19,9 @@
 @property (nonatomic, assign)NSUInteger currentBannerAdIndex;
 @property (nonatomic, strong)NSArray *sortedFullScreenAdsArray;
 @property (nonatomic, assign)NSUInteger currentSortedFullScreenAdIndex;
+
+@property (nonatomic, assign)BOOL haveAdNetworksInitialized;
+@property (nonatomic, strong)SNQueue *adRequestQueue;
 
 - (void)loadAdWithLowerPriority;
 - (void)loadBannerAdWithLowerPriority;
@@ -47,7 +51,10 @@
 @synthesize sortedFullScreenAdsArray = _sortedFullScreenAdsArray;
 @synthesize currentBannerAdIndex;
 @synthesize currentSortedFullScreenAdIndex;
+@synthesize haveAdNetworksInitialized = _haveAdNetworksInitialized;
+@synthesize adRequestQueue = _adRequestQueue;
 
+static int callBackCount = 0; //KVO count for NSOperation objects in Ad Networks initialization
 
 #pragma mark -
 #pragma mark Singleton Methods
@@ -92,16 +99,13 @@ static SNAdsManager *sharedManager = nil;
 	if(self !=nil){
         self.myConnectionStatus = [self isReachableVia];
         //_genericAd.isTestAd = [self isSimulator];
-        _currentAdsBucketArray = [[NSMutableArray alloc] init];
         
-        if(self.myConnectionStatus == kNotReachable){
+        _currentAdsBucketArray = [[NSMutableArray alloc] init];
+        //if(self.myConnectionStatus != kNotReachable){
             [self initializeAdNetworks];
-            [self fetchAds];
-            //[self performSelector:@selector(initializeAdNetworks) withObject:nil afterDelay:0.1];
-            //[self performSelector:@selector(fetchAds) withObject:nil afterDelay:0.4];
-        }else{
-        NSLog(@"!!!Offline!!!");
-        }
+        //}else{
+            NSLog(@"!!!Offline!!!");
+        //}
 	}
 	return self;
 	
@@ -137,6 +141,10 @@ static SNAdsManager *sharedManager = nil;
     GenericAd *mobclixFullScreenAd = [[GenericAd alloc] initWithAdNetworkType:kMobiClix andAdType:kFullScreenAd];
     mobclixFullScreenAd.delegate = self;
     [self.currentAdsBucketArray addObject:mobclixFullScreenAd];
+    
+    if ([self.adRequestQueue count] >= 1) {
+        [self processAdQueue];
+    }
 }
 + (UIViewController *)getRootViewController{
     return [UIApplication sharedApplication].keyWindow.rootViewController;
@@ -179,12 +187,24 @@ static SNAdsManager *sharedManager = nil;
 }
 
 - (void) giveMeFullScreenRevMobAd{
+    if (!self.haveAdNetworksInitialized) {
+        [self addAdRequestToQueue:_cmd];
+        return;
+    }
     [[RevMobAds session] showFullscreen];
 }
 - (void) giveMeBannerRevMobAd{
+    if (!self.haveAdNetworksInitialized) {
+        [self addAdRequestToQueue:_cmd];
+        return;
+    }
     [[RevMobAds session] showBanner];
 }
 - (void) giveLinkRevMobAd{
+    if (!self.haveAdNetworksInitialized) {
+        [self addAdRequestToQueue:_cmd];
+        return;
+    }
     [[RevMobAds session] openAdLinkWithDelegate:self];
 }
 
@@ -193,9 +213,94 @@ static SNAdsManager *sharedManager = nil;
 #pragma mark General Methods
 - (void)initializeAdNetworks{
     
-    [self startRevMob];
-    [self startChartBoost];
-    [self startMobclix];
+    self.haveAdNetworksInitialized = NO;
+    self.adRequestQueue = [[SNQueue alloc] init];
+    
+    NSBlockOperation *startRevMobAdsOperation = [NSBlockOperation blockOperationWithBlock:^{
+       // [self startRevMob];
+        /**
+         Rev Mob Initialization Crashes if made on a background thread
+         Screenshot
+         https://www.evernote.com/shard/s51/sh/bcfeb98f-87f0-441a-a029-f1ecb4dc76d2/ab6ccc7e864ed966e6db7a102ec5eebe
+         Their change log states as of 10th 2013 Feburary that they fixed the issue
+         https://www.evernote.com/shard/s51/sh/984f0b11-4ea1-474a-86f0-3e915f98da4d/cb33358bbb8011f5a2f1f5475e7d028d
+         But it still doesnt work.
+         Once in future releases if this fixed just comment out everything and leave simple [self startRevMob];
+         */
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self startRevMob];
+        });
+    }];
+    //startRevMobAdsOperation.
+    [startRevMobAdsOperation addObserver:self forKeyPath:@"isFinished" options:NSKeyValueObservingOptionNew context:nil];
+    NSBlockOperation *startChartBoostAdsOperation = [NSBlockOperation blockOperationWithBlock:^{
+           //[self startChartBoost];
+        /**
+         Chartboost if initialised on background thread automatically calls didFailToLoadInterstitial:
+         Which is very wiered.
+         */
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self startChartBoost];
+        });
+    }];
+    [startChartBoostAdsOperation setQueuePriority:NSOperationQueuePriorityVeryHigh];
+    [startChartBoostAdsOperation addObserver:self forKeyPath:@"isFinished" options:NSKeyValueObservingOptionNew context:nil];
+    NSBlockOperation *startMobClixAdsOperation = [NSBlockOperation blockOperationWithBlock:^{
+        [self startMobclix];
+    }];
+    [startMobClixAdsOperation addObserver:self forKeyPath:@"isFinished" options:NSKeyValueObservingOptionNew context:nil];
+    
+    NSOperationQueue *adNetwroksInitializationQueue = [[NSOperationQueue alloc] init];
+    [adNetwroksInitializationQueue addOperation:startChartBoostAdsOperation];
+    [adNetwroksInitializationQueue addOperation:startRevMobAdsOperation];
+    [adNetwroksInitializationQueue addOperation:startMobClixAdsOperation];
+
+    
+    if (self.myConnectionStatus == kWANAvailable)
+        [adNetwroksInitializationQueue setMaxConcurrentOperationCount:2];
+    else if (self.myConnectionStatus == kWifiAvailable)
+        [adNetwroksInitializationQueue setMaxConcurrentOperationCount:NSOperationQueueDefaultMaxConcurrentOperationCount];
+}
+
+- (void)addAdRequestToQueue:(SEL)selector{
+    NSLog(@"%s", __PRETTY_FUNCTION__);
+    [self.adRequestQueue push:[NSValue valueWithPointer:selector]];
+    NSLog(@"Contents of queue %@", self.adRequestQueue);
+}
+
+-(void)processAdQueue{
+    NSLog(@"%s", __PRETTY_FUNCTION__);
+    if (![self.adRequestQueue count] >= 1) {
+        return;
+    }
+    NSOperationQueue *adProcessQueue = [[NSOperationQueue alloc] init];
+    for (int i = 0; i < [self.adRequestQueue count]; i++) {
+        SEL selector = [[self.adRequestQueue pop] pointerValue];
+        NSAssert(selector, @"Selector cannot be nil");
+        NSInvocationOperation *operation = [[NSInvocationOperation alloc] initWithTarget:self selector:selector object:nil];
+        [adProcessQueue addOperation:operation];
+        [operation release];
+    }
+}
+
+- (void) observeValueForKeyPath:(NSString*)keyPath ofObject:(id)object change:(NSDictionary*)change context:(void*)context {
+    NSLog(@"%s", __PRETTY_FUNCTION__);
+   // NSLog(@"object %@", change);
+    if ([keyPath isEqualToString:@"isFinished"]) {
+        callBackCount++;
+        if (callBackCount >= kNumberOfAdNetworks) {
+            //[self fetchAds];
+            /**
+             Again RevMob is bit of a bitch crashing on other threads
+             Once they fix it remove all this code and leave [self fetchAds];
+             */
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [self fetchAds];
+                self.haveAdNetworksInitialized = YES;
+            });
+            
+        }
+    }
 }
 
 -(void)startMobclix {
@@ -214,6 +319,7 @@ static SNAdsManager *sharedManager = nil;
     [cb startSession];
     self.chartBoost = cb;
 }
+
 
 - (void)startRevMob{
     [RevMobAds startSessionWithAppID:kRevMobId];
@@ -238,8 +344,9 @@ static SNAdsManager *sharedManager = nil;
 }
 
 - (void)loadBannerAdWithLowerPriority{
-    if (self.currentSortedFullScreenAdIndex == [self.sortedFullScreenAdsArray count] - 1) {
+    if (self.currentBannerAdIndex == [self.sortedBannerAdsArray count] - 1) {
         [self failGracefully];
+        self.currentBannerAdIndex = 0;
     }else{
         GenericAd *genericAd = [self.sortedBannerAdsArray objectAtIndex:self.currentBannerAdIndex + 1];
         [genericAd showBannerAd];
@@ -248,10 +355,13 @@ static SNAdsManager *sharedManager = nil;
 }
 
 - (void)loadFullscreenAdWithLowerPriority{
+    NSLog(@"%s", __PRETTY_FUNCTION__);
     if (self.currentSortedFullScreenAdIndex == [self.sortedFullScreenAdsArray count] - 1) {
         [self failGracefully];
+        self.currentSortedFullScreenAdIndex = 0;//Reset the counter back to ZERO else it would keep failing
     }else{
         GenericAd *genericAd = [self.sortedFullScreenAdsArray objectAtIndex:self.currentSortedFullScreenAdIndex + 1];
+        NSAssert(genericAd, @"Ad cannot be NULL");
         [genericAd showFullScreenAd];
         self.currentSortedFullScreenAdIndex++;
     }
@@ -270,6 +380,10 @@ static SNAdsManager *sharedManager = nil;
 
 - (void) giveMeBannerAd{
     DebugLog(@"%s", __PRETTY_FUNCTION__);
+    if (!self.haveAdNetworksInitialized) {
+        [self addAdRequestToQueue:_cmd];
+        return;
+    }
     GenericAd *ad;// = [[GenericAd alloc] initWithAdType:kBannerAd];
     NSMutableArray *bannerAdsInBucket;// = [[NSMutableArray alloc] init];
   
@@ -298,9 +412,14 @@ static SNAdsManager *sharedManager = nil;
     self.currentBannerAdIndex = 0;
 }
 - (void) giveMeFullScreenAd{
+    
     DebugLog(@"%s", __PRETTY_FUNCTION__);
-    GenericAd *ad;// = [[GenericAd alloc] initWithAdType:kBannerAd];
-    NSMutableArray *fullScreenAdsInBucket;// = [[NSMutableArray alloc] init];
+    if (!self.haveAdNetworksInitialized) {
+        [self addAdRequestToQueue:_cmd];
+        return;
+    }
+    GenericAd *ad;
+    NSMutableArray *fullScreenAdsInBucket;
    
     fullScreenAdsInBucket = [self.currentAdsBucketArray mutableCopy];
     NSPredicate *predicate = [NSPredicate predicateWithFormat:@"adType == %d", kFullScreenAd];
@@ -327,6 +446,10 @@ static SNAdsManager *sharedManager = nil;
     self.currentSortedFullScreenAdIndex = 0;
 }
 - (void) giveMeLinkAd{
+    if (!self.haveAdNetworksInitialized) {
+        [self addAdRequestToQueue:_cmd];
+        return;
+    }
     [[RevMobAds session] openAdLinkWithDelegate:self];
 }
 
@@ -341,19 +464,39 @@ static SNAdsManager *sharedManager = nil;
 #pragma mark -
 #pragma mark Charboost Ads
 - (void) giveMeFullScreenChartBoostAd{
+    if (!self.haveAdNetworksInitialized) {
+        [self addAdRequestToQueue:_cmd];
+        return;
+    }
+    //self.chartBoost.delegate = nil;
     [self.chartBoost showInterstitial];
 }
 
+//TODO:If you call giveMeFullScreenChartBoostAd and Ad fails to load the app will not load another ad
+//This is a known bug
+
 - (void)giveMeMoreAppsAd{
+    if (!self.haveAdNetworksInitialized) {
+        [self addAdRequestToQueue:_cmd];
+        return;
+    }
     [self.chartBoost showMoreApps];
 }
 - (void) giveMeMoreAppsChartBoostAd{
+    if (!self.haveAdNetworksInitialized) {
+        [self addAdRequestToQueue:_cmd];
+        return;
+    }
     [self.chartBoost showMoreApps];
 }
 #pragma mark Delegate Methods
 - (void)didFailToLoadInterstitial:(NSString *)location{
     NSLog(@"%s", __PRETTY_FUNCTION__);
+   // NSLog(@"%@",[NSThread callStackSymbols]);
     [self loadFullscreenAdWithLowerPriority];
+}
+- (BOOL)shouldDisplayLoadingViewForMoreApps{
+    return YES;
 }
 
 #pragma mark -
@@ -363,11 +506,19 @@ static SNAdsManager *sharedManager = nil;
     [self loadFullscreenAdWithLowerPriority];
 }
 - (void)giveMeFullScreenMobClixAd{
+    if (!self.haveAdNetworksInitialized) {
+        [self addAdRequestToQueue:_cmd];
+        return;
+    }
     GenericAd *genericAd = [[GenericAd alloc] initWithAdNetworkType:kMobiClix andAdType:kFullScreenAd];
     [genericAd showFullScreenAd];
 }
 
 - (void)giveMeBannerMobclixAd{
+    if (!self.haveAdNetworksInitialized) {
+        [self addAdRequestToQueue:_cmd];
+        return;
+    }
     GenericAd *genericAd = [[GenericAd alloc] initWithAdNetworkType:kMobiClix andAdType:kBannerAd];
     [genericAd showBannerAd];
 }
