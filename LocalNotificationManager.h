@@ -7,8 +7,9 @@
 //
 
 #import <Foundation/Foundation.h>
+#import "SNManager.h"
 
-@interface LocalNotificationManager : NSObject
+@interface LocalNotificationManager : SNManager
 
 
 @property(nonatomic, strong)NSString *message;

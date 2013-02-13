@@ -25,7 +25,7 @@
 
 #define kAdTimeOutThresholdValue 3.0
 
-#define kRevMobId @"508b256d3628350d00000025"
+#define kRevMobId @"50cc6f2f770d2d850f00000f"//@"508b256d3628350d00000025"
 
 #define ChartBoostAppID @"4f9f7ac4f876590f1000000b" // Neon Tower Paid
 #define ChartBoostAppSignature @"6afe30b73b3ae4bc74892e6685f0a68c5c2ba1c8" //Neon tower Paid
@@ -64,6 +64,10 @@ typedef NS_ENUM(NSUInteger, ConnectionStatus) {
 #define kMobClixFullScreenAdPriority kPriorityLOWEST
 
 #define kNumberOfAdNetworks 3
+
+#define kRateURL @"itms-apps://ax.itunes.apple.com/WebObjects/MZStore.woa/wa/viewContentsUserReviews?type=Purple+Software&id=579388308"
+
+
 
 @interface SNManager : NSObject
 

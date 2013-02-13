@@ -16,16 +16,78 @@
 
 #import <Foundation/Foundation.h>
 #import "SNManager.h"
-#import <RevMobAds/RevMobAds.h>
 #import "MobclixAds.h"
-#import "ChartBoost.h"
 #import "GenericAd.h"
-#import "MobclixFullScreenAdViewController.h"
+
+@protocol SNAdsManagerDelegate
+@optional
+/**
+ Delegate Method to notify that fullscreen Ad has failed to load.
+ All failovers have also failed.
+ */
+- (void)fullScreenAdDidFailToLoad;
+/**
+ Delegate Method to notify that fullscreen Ad has failed to load.
+ All failovers have also failed.
+ */
+- (void)bannerAdDidFailToLoad;
+/**
+ Delegate Method to notify that Link Ad has failed to load.
+ All failovers have also failed.
+ */
+- (void)linkAdDidFailToLoad;
+/**
+ Delegate Method to notify that fullscreen Ad has loaded
+
+ */
+- (void)fullScreenAdDidLoad;
+/**
+ Delegate Method to notify that banner Ad has loaded.
+
+ */
+- (void)bannerAdDidLoad;
+/**
+ Delegate Method to notify that RevMob fullscreen Ad has failed to load.
+ An attempt to load another ad from a different network will also be made if there is a lower priority Ad from another network.
+ If for some reason other network also fails the - (void)fullScreenAdDidFailToLoad; will be called.
+ */
+- (void)revMobFullScreenDidFailToLoad;
+/**
+ Delegate Method to notify that fullscreen Ad has loaded.
+ */
+- (void)revMobFullScreenAdDidLoad;
+/**
+ Delegate Method to notify that ChartBoost fullscreen Ad has failed to load.
+ An attempt to load another ad from a different network will also be made if there is a lower priority Ad from another network.
+ If for some reason other network also fails the - (void)fullScreenAdDidFailToLoad; will be called.
+ */
+- (void)chartBoostFullScreenDidFailToLoad;
+/**
+ Delegate Method to notify that MobClix fullscreen Ad has failed to load.
+ An attempt to load another ad from a different network will also be made if there is a lower priority Ad from another network.
+ If for some reason other network also fails attempt to load ads will fail gracefully.
+ */
+- (void)mobClixFullScreenDidFailToLoad;
+/**
+ Delegate Method to notify that RevMob Banner Ad has failed to load.
+ An attempt to load another ad from a different network will also be made if there is a lower priority Ad from another network.
+ If for some reason other network also fails the request to load banner ad will fail gracefully.
+ */
+- (void)revMobBannerDidFailToLoad;
+/**
+ Delegate Method to notify that RevMob Banner Ad has loaded.
+ */
+- (void)revMobBannerDidLoad;
+
+/**
+ Delegate Method to notify that MobClix Banner Ad has loaded.
+ */
+- (void)mobClixBannerDidLoad;
+@end
 
 
 
-
-@interface SNAdsManager : SNManager <RevMobAdsDelegate, ChartboostDelegate, GenericAdDelegate>
+@interface SNAdsManager : SNManager <GenericAdDelegate>
 
 
 @property (nonatomic, strong)GenericAd *genericAd;
@@ -34,7 +96,7 @@
 
 @property (nonatomic, strong)Chartboost *chartBoost;
 @property (nonatomic, strong)NSTimer *adTimer; //Ad timeout threshold Timer
-
+@property (nonatomic, retain) id <SNAdsManagerDelegate> delegate;
 
 
 + (SNAdsManager *)sharedManager;
@@ -44,6 +106,7 @@
  * Methods for Generic Ad retrieval based on the priority levels defined
  */
 - (void) giveMeBannerAd;
+- (void) giveMeBannerAdAtTop;
 - (void) giveMeFullScreenAd;
 - (void) giveMeLinkAd;
 - (void) giveMeMoreAppsAd;
@@ -69,4 +132,14 @@
  */
 - (void) giveMeBannerMobclixAd;
 - (void) giveMeFullScreenMobClixAd;
+
+
+/**
+ Further Methods to ease usage
+ */
+- (void)giveMeThirdGameOverAd;
+- (void)giveMeGameOverAd;
+- (void)giveMeBootUpAd;
+- (void)giveMeWillEnterForegroundAd;
+- (void)giveMePaidFullScreenAd;
 @end

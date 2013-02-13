@@ -26,7 +26,9 @@
 @synthesize adStarted;
 @synthesize revMobFullScreenAd = _revMobFullScreenAd;
 @synthesize delegate = _delegate;
-@synthesize revMobBannerAd = _revMobBannerAd;
+//@synthesize revMobBannerAd = _revMobBannerAd;
+@synthesize revMobBannerAdView = _revMobBannerAdView;
+@synthesize adLink = _adLink;
 //@synthesize mobClixFullScreenViewController = _mobClixFullScreenViewController;
 
 - (id) initWithAdNetworkType:(NSUInteger)adNetworkType andAdType:(NSUInteger)adType{
@@ -36,8 +38,10 @@
         _adNetworkType = adNetworkType;
         switch (adNetworkType) {
             case kMobiClix:
-                if (_adType == kBannerAd)
+                if (_adType == kBannerAd){
+                    adView.delegate = self;
                     _adPriority = kMobClixBannerAdPriority;
+                }
                 else if (adType == kFullScreenAd){
                     _adPriority = kMobClixFullScreenAdPriority;
                     fullScreenAdViewController = [[MobclixFullScreenAdViewController alloc] init];
@@ -46,28 +50,45 @@
                 }
                 break;
             case kChartBoost:
-                if (adType == kFullScreenAd) 
+                if (adType == kFullScreenAd){
                     _adPriority = kChartBoostFullScreeAdPriority;
+                    self.chartBoost = [SNAdsManager sharedManager].chartBoost;
+                    self.chartBoost.delegate = self;
+                }
                 else if (adType == kMoreAppsAd)
                     _adPriority = kChartBoostMoreAppsAd;
                 break;
             case kRevMob:
                 if(adType == kBannerAd){
                     _adPriority = kRevMobBannerAdPriority;
-                    _revMobBannerAd = [[RevMobAds session] banner];
-                    [_revMobBannerAd loadAd];
+                    
+                    _revMobBannerAdView = [[RevMobAds session] bannerView];
+                    [_revMobBannerAdView retain];
+                    _revMobBannerAdView.delegate = self;
+                    [_revMobBannerAdView loadAd];
+                    
+//                    _revMobBannerAd = [[RevMobAds session] banner];
+//                    [_revMobBannerAd retain];
+//                    [_revMobBannerAd loadAd];
                 }
                 else if (adType == kFullScreenAd){
                     _adPriority = kRevMobFullScreenAdPriority;
                     _revMobFullScreenAd = [[RevMobAds session] fullscreen];
+                    [_revMobFullScreenAd retain];
                     [_revMobFullScreenAd loadWithSuccessHandler:nil andLoadFailHandler:^(RevMobFullscreen *fs, NSError *error){
                             [self.delegate revMobFullScreenDidFailToLoad:self];
                     }];
+                    
                 }
                 else if (adType == kButtonAd)
                     _adPriority = kRevMobButtonAdPriority;
-                else if (adType == kLinkAd)
+                else if (adType == kLinkAd){
                     _adPriority = kRevMobLinkAdPriority;
+                    self.adLink = [[RevMobAds session] adLinkWithPlacementId:nil]; // you must retain this object
+                    [self.adLink retain];
+                    self.adLink.delegate = self;
+                    [self.adLink loadAd];
+                }
                 else if (adType == kPopUpAd)
                     _adPriority = kRevMobPopAdPriority;
                 else if (adType == kLocalNotificationAd)
@@ -92,18 +113,59 @@
     return self;
 }
 
--(void)showBannerAd{
+-(void)showBannerAdAtTop{
     switch(self.adNetworkType){
         case kRevMob:{
             @try {
-                //[self.revMobBannerAd showAd];
-                [[RevMobAds session] showBanner];
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    NSUInteger screenWidth = [[UIScreen mainScreen] bounds].size.width;
+                    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
+                        self.revMobBannerAdView.frame = CGRectMake(0, 0, screenWidth, 114);
+                    } else {
+                        self.revMobBannerAdView.frame = CGRectMake(0, 0, screenWidth, 50);
+                    }
+                        [[SNAdsManager getRootViewController].view addSubview:self.revMobBannerAdView];
+                });
             }
             @catch (NSException *exception) {
                 NSLog(@"%@", exception.reason);
             }
             @finally {
-                [[RevMobAds session] showBanner];
+                //
+            }
+        }
+            break;
+        case kMobiClix:
+            [self showAd];
+            break;
+        default:
+            [NSException raise:@"Undefined Ad Network" format:@"Ad Network is unknown or does not have a banner Ad."];
+            break;
+    }
+}
+
+-(void)showBannerAd{
+    switch(self.adNetworkType){
+        case kRevMob:{
+            @try {
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    self.revMobBannerAdView.delegate = self;
+                    NSUInteger screenHeight = [[UIScreen mainScreen] bounds].size.height;
+                    NSUInteger screenWidth = [[UIScreen mainScreen] bounds].size.width;
+                    if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
+                        self.revMobBannerAdView.frame = CGRectMake(0, screenHeight - 114, screenWidth, 114);
+                    } else {
+                        self.revMobBannerAdView.frame = CGRectMake(0, screenHeight - 50, screenWidth, 50);
+                    }
+                    self.revMobBannerAdView.hidden = NO;
+                    [[SNAdsManager getRootViewController].view addSubview:self.revMobBannerAdView];
+                });
+            }
+            @catch (NSException *exception) {
+                NSLog(@"%@", exception.reason);
+            }
+            @finally {
+                //
             }
         }
             break;
@@ -120,25 +182,16 @@
     switch(self.adNetworkType){
         case kRevMob:
         {
-            /*if ([self.revMobFullScreenAd respondsToSelector:@selector(showAd)]) {
-                
-            }else{
-             */ //This seems to fail sometimes I dont know the reason why even the respondsToSelector crashes ...?
-                // RevMob SDK have far too many problems
-                
-           // }
             @try {
-                //[self.revMobFullScreenAd showAd];
-                dispatch_async(dispatch_get_main_queue(), ^{
-                    [[RevMobAds session] showFullscreen];
-                });
+                if ([self.revMobFullScreenAd respondsToSelector:@selector(showAd)]) {
+                    dispatch_async(dispatch_get_main_queue(), ^{
+                        [self.revMobFullScreenAd showAd];
+                    });
+                }
             }
             @catch (NSException *exception) {
                 NSLog(@"%@", exception.reason);
             }
-            @finally {
-                [[RevMobAds session] showFullscreen];
-            } 
         }
             break;
         case kMobiClix:{
@@ -149,7 +202,8 @@
             break;
         case kChartBoost:{
             dispatch_async(dispatch_get_main_queue(), ^{
-                [[SNAdsManager sharedManager].chartBoost showInterstitial];
+                self.chartBoost.delegate = self;
+                [self.chartBoost showInterstitial];
             });
         }
             break;
@@ -159,11 +213,12 @@
     }
 }
 -(void)showLinkButtonAd{
-    
+    [self.adLink openLink];
 }
 
 -(void)hideBannerAd{
-    
+    //[self.revMobBannerAd hideAd];
+    self.revMobBannerAdView.hidden = YES;
 }
 
 
@@ -248,10 +303,55 @@
     [fullScreenAdViewController requestAndDisplayAdFromViewController:rootViewController];
 
 }
+
+
+- (void)revmobAdDidFailWithError:(NSError *)error{
+    NSLog(@" Hey hey hey %s", __PRETTY_FUNCTION__);
+    if (self.adType == kBannerAd) {
+        [self.delegate revMobBannerDidFailToLoad:self];
+    }else if (self.adType == kFullScreenAd){
+        [self.delegate revMobFullScreenDidFailToLoad:self];
+    }
+}
+- (void)revmobAdDisplayed{
+    if (self.adType == kBannerAd) {
+        [self.delegate revMobBannerDidLoadAd:self];
+    }else if (self.adType == kFullScreenAd){
+        [self.delegate revMobFullScreenDidLoadAd:self];
+    }
+}
+- (void)revmobAdDidReceive{
+    NSLog(@"%s", __PRETTY_FUNCTION__);
+    if (self.adType == kBannerAd) {
+        [self.delegate revMobBannerDidLoadAd:self];
+    }else if (self.adType == kFullScreenAd){
+        [self.delegate revMobFullScreenDidLoadAd:self];
+    }
+}
+- (void)didFailToLoadInterstitial:(NSString *)location{
+    NSLog(@"%s", __PRETTY_FUNCTION__);
+    // NSLog(@"%@",[NSThread callStackSymbols]);
+    [self.delegate chartBoostFullScreenDidFailToLoad:self];
+}
+- (BOOL)shouldDisplayLoadingViewForMoreApps{
+    return YES;
+}
+
+- (void)fullScreenAdViewControllerDidFinishLoad:(MobclixFullScreenAdViewController*)fullScreenAdViewController{
+    [self.delegate mobClixFullScreenDidLoadAd:self];
+}
+
 - (void)fullScreenAdViewController:(MobclixFullScreenAdViewController*)fullScreenAdViewController didFailToLoadWithError:(NSError*)error{
     //[self loadFullscreenAdWithLowerPriority];
     NSLog(@"%s", __PRETTY_FUNCTION__);
     NSLog(@"Error = %@", [error description]);
     [self.delegate mobClixFullScreenDidFailToLoad:self];
 }
+- (void)adViewDidFinishLoad:(MobclixAdView*)adView{
+    [self.delegate mobClixBannerDidLoadAd:self];
+}
+- (void)adView:(MobclixAdView*)adView didFailLoadWithError:(NSError*)error{
+    [self.delegate mobClixBannerDidFailToLoadBannerAd:self];
+}
+
 @end
