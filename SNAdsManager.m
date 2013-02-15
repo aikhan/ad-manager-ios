@@ -308,7 +308,7 @@ static SNAdsManager *sharedManager = nil;
 
 -(void)startMobclix {
     dispatch_async(dispatch_get_main_queue(), ^{
-        [Mobclix startWithApplicationId:@"insert-your-application-key"];
+        [Mobclix startWithApplicationId:MOBCLIX_ID];
     });
     
    // [Mobclix startWithApplicationId:@"insert-your-application-key"];
@@ -318,8 +318,8 @@ static SNAdsManager *sharedManager = nil;
     DebugLog(@"%s", __PRETTY_FUNCTION__);
     Chartboost *cb = [Chartboost sharedChartboost];
     //cb.delegate = self;
-    cb.appId = @"4f9f7ac4f876590f1000000b";
-    cb.appSignature = @"6afe30b73b3ae4bc74892e6685f0a68c5c2ba1c8";
+    cb.appId = ChartBoostAppID;
+    cb.appSignature = ChartBoostAppSignature;
     [cb cacheInterstitial];
     [cb cacheMoreApps];
     [cb startSession];
@@ -328,7 +328,7 @@ static SNAdsManager *sharedManager = nil;
 
 
 - (void)startRevMob{
-    [RevMobAds startSessionWithAppID:@"50cc6f2f770d2d850f00000f"];
+    [RevMobAds startSessionWithAppID:kRevMobId];
 //    if ([self isSimulator]) {
       //  [RevMobAds session].testingMode = RevMobAdsTestingModeWithAds;
 //    }
