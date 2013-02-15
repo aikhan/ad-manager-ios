@@ -29,6 +29,7 @@
 //@synthesize revMobBannerAd = _revMobBannerAd;
 @synthesize revMobBannerAdView = _revMobBannerAdView;
 @synthesize adLink = _adLink;
+
 //@synthesize mobClixFullScreenViewController = _mobClixFullScreenViewController;
 
 - (id) initWithAdNetworkType:(NSUInteger)adNetworkType andAdType:(NSUInteger)adType{
@@ -62,10 +63,6 @@
                 if(adType == kBannerAd){
                     _adPriority = kRevMobBannerAdPriority;
                     
-                    _revMobBannerAdView = [[RevMobAds session] bannerView];
-                    [_revMobBannerAdView retain];
-                    _revMobBannerAdView.delegate = self;
-                    [_revMobBannerAdView loadAd];
                     
 //                    _revMobBannerAd = [[RevMobAds session] banner];
 //                    [_revMobBannerAd retain];
@@ -149,6 +146,11 @@
         case kRevMob:{
             @try {
                 dispatch_async(dispatch_get_main_queue(), ^{
+                    
+                    self.revMobBannerAdView = [[RevMobAds session] bannerView];
+                    [self.revMobBannerAdView retain];
+                    self.revMobBannerAdView.delegate = self;
+                    [self.revMobBannerAdView loadAd];
                     self.revMobBannerAdView.delegate = self;
                     NSUInteger screenHeight = [[UIScreen mainScreen] bounds].size.height;
                     NSUInteger screenWidth = [[UIScreen mainScreen] bounds].size.width;
@@ -242,7 +244,7 @@
         // We only want one ad at a time
         [self cancelAd];
     }
-    CGSize winSize = [[CCDirector sharedDirector] winSize];//[UIScreen mainScreen].bounds.size;//
+    CGSize winSize = [UIScreen mainScreen].bounds.size;//
     bool is3GDevice = [[self platform] isEqualToString:@"iPhone1,2"];
     
     if (is3GDevice) {
@@ -257,13 +259,13 @@
         adView = [[[MobclixAdViewiPhone_320x50 alloc] initWithFrame:CGRectMake(loc.x, winSize.height - loc.y - 50.0f, 320.0f, 50.0f)] autorelease];
     }
     //    [[[self getRootViewController] view] addSubview:adView];
-    [[[CCDirector sharedDirector] openGLView] addSubview:adView];
+    [[SNAdsManager getRootViewController].view addSubview:adView];
     
     [self.adView resumeAdAutoRefresh];
 }
 -(void) showAd {
     if (!adView)
-        [self newAd:ccp(0,0)];
+        [self newAd:CGPointMake(0,0)];
     [self.adView resumeAdAutoRefresh];
     [self.adView setHidden:NO];
 }
@@ -286,7 +288,7 @@
 -(void) startMobclix {
     if (!adStarted)
         adStarted = YES;
-        [Mobclix startWithApplicationId:MOBCLIX_ID];
+      //  [Mobclix startWithApplicationId:MOBCLIX_ID];
 }
 
 -(void)prefetchMobClixFullScreenAd{
@@ -309,6 +311,7 @@
     NSLog(@" Hey hey hey %s", __PRETTY_FUNCTION__);
     if (self.adType == kBannerAd) {
         [self.delegate revMobBannerDidFailToLoad:self];
+        [[SNAdsManager sharedManager] revMobBannerDidFailToLoad:self];
     }else if (self.adType == kFullScreenAd){
         [self.delegate revMobFullScreenDidFailToLoad:self];
     }
@@ -321,12 +324,12 @@
     }
 }
 - (void)revmobAdDidReceive{
-    NSLog(@"%s", __PRETTY_FUNCTION__);
-    if (self.adType == kBannerAd) {
-        [self.delegate revMobBannerDidLoadAd:self];
-    }else if (self.adType == kFullScreenAd){
-        [self.delegate revMobFullScreenDidLoadAd:self];
-    }
+//    NSLog(@"%s", __PRETTY_FUNCTION__);
+//    if (self.adType == kBannerAd) {
+//        [self.delegate revMobBannerDidLoadAd:self];
+//    }else if (self.adType == kFullScreenAd){
+//        [self.delegate revMobFullScreenDidLoadAd:self];
+//    }
 }
 - (void)didFailToLoadInterstitial:(NSString *)location{
     NSLog(@"%s", __PRETTY_FUNCTION__);

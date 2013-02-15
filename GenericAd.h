@@ -9,7 +9,6 @@
 #import <Foundation/Foundation.h>
 #import "SNManager.h"
 #import "MobclixAds.h"
-#import "cocos2d.h"
 #import "MobclixFullScreenAdViewController.h"
 #import <RevMobAds/RevMobAds.h>
 #import "Chartboost.h"
