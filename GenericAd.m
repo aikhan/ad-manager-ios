@@ -18,6 +18,16 @@
 
 @implementation GenericAd
 
+/**
+Chartboost AdNetwork calls the didFailToLoadInterstitial: delegate method even when it tries and fails to load the cache which results in 2 callbacks. The Problem with our admanager than is it loads two lower priority ads. To mitigate this we will be using nstimer to distinguish between 2 consecutive calls. If the time difference between the calls is less than a specified limit we will ignore the second call.
+ For this we will be declaring a static float variable to store first intial failure time and than we will compare it with every second call we wll recieve.
+
+ Another option is to wait a predefined number of seconds before calling another ad network. This option is NOT currently implemented in this code.
+*/
+
+static double firstCallBackTime;
+static int callBackCount;
+
 @synthesize adNetworkType = _adNetworkType;
 @synthesize adType = _adType;
 @synthesize isTestAd = _isTestAd;
@@ -62,11 +72,7 @@
             case kRevMob:
                 if(adType == kBannerAd){
                     _adPriority = kRevMobBannerAdPriority;
-                    
-                    
-//                    _revMobBannerAd = [[RevMobAds session] banner];
-//                    [_revMobBannerAd retain];
-//                    [_revMobBannerAd loadAd];
+                    _revMobBannerAdView.delegate = self;
                 }
                 else if (adType == kFullScreenAd){
                     _adPriority = kRevMobFullScreenAdPriority;
@@ -151,7 +157,6 @@
                     [self.revMobBannerAdView retain];
                     self.revMobBannerAdView.delegate = self;
                     [self.revMobBannerAdView loadAd];
-                    self.revMobBannerAdView.delegate = self;
                     NSUInteger screenHeight = [[UIScreen mainScreen] bounds].size.height;
                     NSUInteger screenWidth = [[UIScreen mainScreen] bounds].size.width;
                     if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
@@ -161,7 +166,7 @@
                     }
                     self.revMobBannerAdView.hidden = NO;
                     [[SNAdsManager getRootViewController].view addSubview:self.revMobBannerAdView];
-                });
+               });
             }
             @catch (NSException *exception) {
                 NSLog(@"%@", exception.reason);
@@ -187,6 +192,7 @@
             @try {
                 if ([self.revMobFullScreenAd respondsToSelector:@selector(showAd)]) {
                     dispatch_async(dispatch_get_main_queue(), ^{
+                        self.revMobFullScreenAd.delegate = self;
                         [self.revMobFullScreenAd showAd];
                     });
                 }
@@ -221,6 +227,7 @@
 -(void)hideBannerAd{
     //[self.revMobBannerAd hideAd];
     self.revMobBannerAdView.hidden = YES;
+    [self.revMobBannerAdView removeFromSuperview];
 }
 
 
@@ -258,9 +265,9 @@
     else {
         adView = [[[MobclixAdViewiPhone_320x50 alloc] initWithFrame:CGRectMake(loc.x, winSize.height - loc.y - 50.0f, 320.0f, 50.0f)] autorelease];
     }
-    //    [[[self getRootViewController] view] addSubview:adView];
-    [[SNAdsManager getRootViewController].view addSubview:adView];
     
+    [[SNAdsManager getRootViewController].view addSubview:adView];
+    self.adView.delegate = self;
     [self.adView resumeAdAutoRefresh];
 }
 -(void) showAd {
@@ -268,18 +275,24 @@
         [self newAd:CGPointMake(0,0)];
     [self.adView resumeAdAutoRefresh];
     [self.adView setHidden:NO];
+    [self.adView getAd];
 }
 
 -(void) hideAd {
+    
+    if (self.adView.hidden) {
+        return;
+    }
     [self.adView pauseAdAutoRefresh];
     [self.adView setHidden:YES];
+    [self.adView removeFromSuperview];
 }
 
 -(void) cancelAd {
     // Can only cancel it if it exists
     if (adView) {
         [adView cancelAd];
-        [adView setDelegate:nil];
+        //[adView setDelegate:nil];
         [adView removeFromSuperview];
         adView = nil;
     }
@@ -311,12 +324,14 @@
     NSLog(@" Hey hey hey %s", __PRETTY_FUNCTION__);
     if (self.adType == kBannerAd) {
         [self.delegate revMobBannerDidFailToLoad:self];
-        [[SNAdsManager sharedManager] revMobBannerDidFailToLoad:self];
+        [self.revMobBannerAdView removeFromSuperview];
+       // [[SNAdsManager sharedManager] revMobBannerDidFailToLoad:self];
     }else if (self.adType == kFullScreenAd){
         [self.delegate revMobFullScreenDidFailToLoad:self];
     }
 }
 - (void)revmobAdDisplayed{
+    NSLog(@"%s", __PRETTY_FUNCTION__);
     if (self.adType == kBannerAd) {
         [self.delegate revMobBannerDidLoadAd:self];
     }else if (self.adType == kFullScreenAd){
@@ -324,17 +339,41 @@
     }
 }
 - (void)revmobAdDidReceive{
-//    NSLog(@"%s", __PRETTY_FUNCTION__);
-//    if (self.adType == kBannerAd) {
-//        [self.delegate revMobBannerDidLoadAd:self];
-//    }else if (self.adType == kFullScreenAd){
-//        [self.delegate revMobFullScreenDidLoadAd:self];
-//    }
+    NSLog(@"%s", __PRETTY_FUNCTION__);
+    if (self.adType == kBannerAd) {
+        [self.delegate revMobBannerDidLoadAd:self];
+    }else if (self.adType == kFullScreenAd){
+        //[self.delegate revMobFullScreenDidLoadAd:self];
+    }
 }
 - (void)didFailToLoadInterstitial:(NSString *)location{
     NSLog(@"%s", __PRETTY_FUNCTION__);
     // NSLog(@"%@",[NSThread callStackSymbols]);
-    [self.delegate chartBoostFullScreenDidFailToLoad:self];
+    /**
+     On every callback increment the callback count by one
+     on second callback check if the difference between first and second call is more than 1.5 sec
+     If its more than 1.5 than most probably its a genuine failure callback
+     else if its less than 3.5 just ignore it
+     To make things quicker and not having to calculate nsdate instances everytime we're placing them in if else statements with respect to the callback counters.
+     */
+    callBackCount++;
+    if(callBackCount == 1){
+       firstCallBackTime = [[NSDate date] timeIntervalSince1970];
+        [self.delegate chartBoostFullScreenDidFailToLoad:self];
+    }
+    else if (callBackCount == 2){
+        NSDate *now = [NSDate date];
+        double end = [now timeIntervalSince1970];
+        double difference = end - firstCallBackTime;
+        NSLog(@"Difference between calls is %f", difference);
+        if (difference > 3.5) {
+            [self.delegate chartBoostFullScreenDidFailToLoad:self];
+        }
+    }else{
+        [self.delegate chartBoostFullScreenDidFailToLoad:self];
+    }
+        
+    
 }
 - (BOOL)shouldDisplayLoadingViewForMoreApps{
     return YES;
@@ -351,9 +390,11 @@
     [self.delegate mobClixFullScreenDidFailToLoad:self];
 }
 - (void)adViewDidFinishLoad:(MobclixAdView*)adView{
+    NSLog(@"%s", __PRETTY_FUNCTION__);
     [self.delegate mobClixBannerDidLoadAd:self];
 }
 - (void)adView:(MobclixAdView*)adView didFailLoadWithError:(NSError*)error{
+    NSLog(@"%s", __PRETTY_FUNCTION__);
     [self.delegate mobClixBannerDidFailToLoadBannerAd:self];
 }
 

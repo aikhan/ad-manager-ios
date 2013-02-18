@@ -19,7 +19,7 @@
 #import "MobclixAds.h"
 #import "GenericAd.h"
 
-@protocol SNAdsManagerDelegate
+@protocol SNAdsManagerDelegate <NSObject>
 @optional
 /**
  Delegate Method to notify that fullscreen Ad has failed to load.
@@ -96,7 +96,7 @@
 
 @property (nonatomic, strong)Chartboost *chartBoost;
 @property (nonatomic, strong)NSTimer *adTimer; //Ad timeout threshold Timer
-@property (nonatomic, retain) id <SNAdsManagerDelegate> delegate;
+@property (nonatomic, unsafe_unretained) id <SNAdsManagerDelegate> delegate;
 
 
 + (SNAdsManager *)sharedManager;

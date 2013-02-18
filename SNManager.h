@@ -25,14 +25,14 @@
 
 #define kAdTimeOutThresholdValue 3.0
 
-#ifdef FreeApp
+//#ifdef FreeApp
 #define kRevMobId @"50cc6f2f770d2d850f00000f"//@"508b256d3628350d00000025"
 
 #define ChartBoostAppID @"4f9f7ac4f876590f1000000b" // Neon Tower Paid
 #define ChartBoostAppSignature @"6afe30b73b3ae4bc74892e6685f0a68c5c2ba1c8" //Neon tower Paid
 
 #define MOBCLIX_ID @"insert-your-application-key"//@"B7C698A4-FFF5-4B2F-822F-25170F8858C3"//@"2C63EF1A-CA74-4467-8D30-1032D073A367"//2C63EF1A-
-#endif
+//#endif
 
 #ifdef PaidApp
 #define kRevMobId @"50cc6f2f770d2d850f00000f"//@"508b256d3628350d00000025"

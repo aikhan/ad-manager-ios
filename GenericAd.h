@@ -19,7 +19,7 @@
 
 //@class MobclixFullScreenAdViewController;
 
-@protocol GenericAdDelegate
+@protocol GenericAdDelegate <NSObject>
 @optional
 - (void)revMobFullScreenDidFailToLoad:(GenericAd *)ad;
 - (void)chartBoostFullScreenDidFailToLoad:(GenericAd *)ad;
