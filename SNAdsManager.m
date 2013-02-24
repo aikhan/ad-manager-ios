@@ -12,6 +12,7 @@
 #import "Mobclix.h"
 #import "SNQueue.h"
 #import "AppDelegate.h"
+#import "TapjoyConnect.h"
 
 
 static NSUInteger gameOverCount = 0;
@@ -132,6 +133,10 @@ static SNAdsManager *sharedManager = nil;
     chartBoostMoreAppsAd.delegate = self;
     [self.currentAdsBucketArray addObject:chartBoostMoreAppsAd];
     
+    GenericAd *playHavenFullScreenAd = [[GenericAd alloc] initWithAdNetworkType:kPlayHaven andAdType:kFullScreenAd];
+    playHavenFullScreenAd.delegate = self;
+    [self.currentAdsBucketArray addObject:playHavenFullScreenAd];
+    
     GenericAd *revMobBannerAd = [[GenericAd alloc] initWithAdNetworkType:kRevMob andAdType:kBannerAd];
     revMobBannerAd.delegate = self;
     [self.currentAdsBucketArray addObject:revMobBannerAd];
@@ -218,7 +223,7 @@ static SNAdsManager *sharedManager = nil;
     self.adRequestQueue = [[SNQueue alloc] init];
     
     NSBlockOperation *startRevMobAdsOperation = [NSBlockOperation blockOperationWithBlock:^{
-        [self startRevMob];
+       // [self startRevMob];
         /**
          Rev Mob Initialization Crashes if made on a background thread
          Screenshot
@@ -228,11 +233,11 @@ static SNAdsManager *sharedManager = nil;
          But it still doesnt work.
          Once in future releases if this fixed just comment out everything and leave simple [self startRevMob];
          */
-//        dispatch_async(dispatch_get_main_queue(), ^{
-//            [self startRevMob];
-//        });
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [self startRevMob];
+        });
     }];
-    
+    [startRevMobAdsOperation setQueuePriority:NSOperationQueuePriorityHigh];
     [startRevMobAdsOperation addObserver:self forKeyPath:@"isFinished" options:NSKeyValueObservingOptionNew context:nil];
     NSBlockOperation *startChartBoostAdsOperation = [NSBlockOperation blockOperationWithBlock:^{
            //[self startChartBoost];
@@ -254,10 +259,23 @@ static SNAdsManager *sharedManager = nil;
     }];
     [startMobClixAdsOperation addObserver:self forKeyPath:@"isFinished" options:NSKeyValueObservingOptionNew context:nil];
     
+    NSBlockOperation *startPlayHavenAdsOperation = [NSBlockOperation blockOperationWithBlock:^{
+        [[PHPublisherOpenRequest requestForApp:kPlayHavenAppToken secret:kPlayHavenSecret] send];
+    }];
+    [startPlayHavenAdsOperation addObserver:self forKeyPath:@"isFinished" options:NSKeyValueObservingOptionNew context:nil];
+    
+    NSBlockOperation *startTapJoyOperation = [NSBlockOperation blockOperationWithBlock:^{
+        [TapjoyConnect requestTapjoyConnect:kTapJoyAppID secretKey:kTapJoySecretKey];
+    }];
+    [startTapJoyOperation addObserver:self forKeyPath:@"isFinished" options:NSKeyValueObservingOptionNew context:nil];
+    
     NSOperationQueue *adNetwroksInitializationQueue = [[NSOperationQueue alloc] init];
     [adNetwroksInitializationQueue addOperation:startChartBoostAdsOperation];
+    [adNetwroksInitializationQueue addOperation:startPlayHavenAdsOperation];
     [adNetwroksInitializationQueue addOperation:startRevMobAdsOperation];
     [adNetwroksInitializationQueue addOperation:startMobClixAdsOperation];
+    [adNetwroksInitializationQueue addOperation:startTapJoyOperation];
+    
 
     
     if (self.myConnectionStatus == kWANAvailable)
@@ -308,31 +326,31 @@ static SNAdsManager *sharedManager = nil;
 }
 
 -(void)startMobclix {
+    NSLog(@"%s", __PRETTY_FUNCTION__);
     dispatch_async(dispatch_get_main_queue(), ^{
-       // [Mobclix startWithApplicationId:[(AppDelegate*)[[UIApplication sharedApplication] delegate] mobClixID]];
-        [Mobclix startWithApplicationId:@"insert-your-application-key"];
+        [Mobclix startWithApplicationId:MOBCLIX_ID];
+      //  [Mobclix startWithApplicationId:@"insert-your-application-key"];
     });
-    
-   // [Mobclix startWithApplicationId:@"insert-your-application-key"];
 }
 
 - (void)startChartBoost{
     DebugLog(@"%s", __PRETTY_FUNCTION__);
     Chartboost *cb = [Chartboost sharedChartboost];
     //cb.delegate = self;
-    cb.appId = ChartBoostAppID;//[(AppDelegate*)[[UIApplication sharedApplication] delegate] chartBoostAppID];
-    cb.appSignature = ChartBoostAppSignature;//[(AppDelegate*)[[UIApplication sharedApplication] delegate] chartBoostSignature];
+    cb.appId = ChartBoostAppID;
+    cb.appSignature = ChartBoostAppSignature;
     [cb cacheInterstitial];
     [cb cacheMoreApps];
+    cb.timeout = 10;
     [cb startSession];
     self.chartBoost = cb;
 }
 
 
 - (void)startRevMob{
-    [RevMobAds startSessionWithAppID: kRevMobId];//[(AppDelegate*)[[UIApplication sharedApplication] delegate] revMobID]];
-//    if ([self isSimulator]) {
- //  [RevMobAds session].testingMode = RevMobAdsTestingModeWithAds;
+    [RevMobAds startSessionWithAppID: kRevMobId];
+    [RevMobAds session].connectionTimeout = 10;
+//    [RevMobAds session].testingMode = RevMobAdsTestingModeWithAds;
 //    }
 }
 
@@ -545,6 +563,7 @@ static SNAdsManager *sharedManager = nil;
     if ([self.currentAdsBucketArray count] >= 1) {//Check Ad Bucket is not empty
         for (GenericAd *genAd in sortedArray) {
             NSLog(@"Priority is %d", genAd.adPriority);
+            NSLog(@"Ad Network Type is %d", genAd.adNetworkType);
         }
     }
     self.sortedFullScreenAdsArray = sortedArray;
@@ -588,6 +607,7 @@ static SNAdsManager *sharedManager = nil;
     [self giveMeFullScreenAd];
 }
 - (void)giveMeWillEnterForegroundAd{
+    [[PHPublisherOpenRequest requestForApp:kPlayHavenAppToken secret:kPlayHavenSecret] send];
     [self giveMeFullScreenAd];
 }
 -(void) giveMePaidFullScreenAd{
@@ -697,7 +717,9 @@ static SNAdsManager *sharedManager = nil;
 - (void)chartBoostFullScreenDidFailToLoad:(GenericAd *)ad{
     NSLog(@"%s", __PRETTY_FUNCTION__);
     [self loadFullscreenAdWithLowerPriorityThanPreviousAd:ad];
-   // [self.delegate chartBoostFullScreenDidFailToLoad];
+    if ([self.delegate respondsToSelector:@selector(chartBoostFullScreenDidFailToLoad)]) {
+        [self.delegate chartBoostFullScreenDidFailToLoad];
+    }
 }
 
 - (void)revMobFullScreenDidLoadAd:(GenericAd *)ad{
@@ -716,5 +738,19 @@ static SNAdsManager *sharedManager = nil;
     if ([self.delegate respondsToSelector:@selector(fullScreenAdDidLoad)]) {
         [self.delegate fullScreenAdDidLoad];
     }
+}
+
+- (void)playHavenFullScreenDidLoadAd:(GenericAd *)ad{
+    if ([self.delegate respondsToSelector:@selector(playHavenFullScreenDidLoad)]) {
+        [self.delegate playHavenFullScreenDidLoad];
+    }
+
+}
+- (void)playHavenFullScreenDidFailToLoad:(GenericAd *)ad{
+    [self loadFullscreenAdWithLowerPriorityThanPreviousAd:ad];
+    if ([self.delegate respondsToSelector:@selector(playHavenFullScreenDidFailToLoad)]) {
+        [self.delegate playHavenFullScreenDidFailToLoad];
+    }
+    
 }
 @end

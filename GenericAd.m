@@ -16,6 +16,15 @@
 #import <RevMobAds/RevMobBanner.h>
 #import "MobclixFullScreenAdViewController.h"
 
+static int count = 0;
+
+@interface GenericAd()
+
+@property (nonatomic, retain) NSTimer *playHavenTimer;
+@property (nonatomic, assign)BOOL hasPlayHavenAdLoaded;
+@end
+
+
 @implementation GenericAd
 
 /**
@@ -28,6 +37,11 @@ Chartboost AdNetwork calls the didFailToLoadInterstitial: delegate method even w
 static double firstCallBackTime;
 static int callBackCount;
 
+/**
+ Sometimes RevMob fails to notify that loading ad has been failed so as a back we're adding fail time for RevMob FullScreen and Banner both
+ */
+
+
 @synthesize adNetworkType = _adNetworkType;
 @synthesize adType = _adType;
 @synthesize isTestAd = _isTestAd;
@@ -36,10 +50,12 @@ static int callBackCount;
 @synthesize adStarted;
 @synthesize revMobFullScreenAd = _revMobFullScreenAd;
 @synthesize delegate = _delegate;
-//@synthesize revMobBannerAd = _revMobBannerAd;
+
 @synthesize revMobBannerAdView = _revMobBannerAdView;
 @synthesize adLink = _adLink;
-
+@synthesize revMobFullScreenAdTimer = _revMobFullScreenAdTimer;
+@synthesize isRevMobFullScreenAlreadyShown = _isRevMobFullScreenAlreadyShown;
+@synthesize playHavenTimer = _playHavenTimer;
 //@synthesize mobClixFullScreenViewController = _mobClixFullScreenViewController;
 
 - (id) initWithAdNetworkType:(NSUInteger)adNetworkType andAdType:(NSUInteger)adType{
@@ -69,6 +85,12 @@ static int callBackCount;
                 else if (adType == kMoreAppsAd)
                     _adPriority = kChartBoostMoreAppsAd;
                 break;
+            case kPlayHaven:
+                if (adType == kFullScreenAd) {
+                    _adPriority = kPlayHavenFullScreenAdPriority;
+                    [[PHPublisherContentRequest requestForApp:kPlayHavenAppToken secret:kPlayHavenSecret placement:kPlayHavenPlacement delegate:self] preload];
+                }
+                break;
             case kRevMob:
                 if(adType == kBannerAd){
                     _adPriority = kRevMobBannerAdPriority;
@@ -78,10 +100,10 @@ static int callBackCount;
                     _adPriority = kRevMobFullScreenAdPriority;
                     _revMobFullScreenAd = [[RevMobAds session] fullscreen];
                     [_revMobFullScreenAd retain];
+                    //_revMobFullScreenAd.delegate = self;
                     [_revMobFullScreenAd loadWithSuccessHandler:nil andLoadFailHandler:^(RevMobFullscreen *fs, NSError *error){
-                            [self.delegate revMobFullScreenDidFailToLoad:self];
-                    }];
-                    
+                          //  [self.delegate revMobFullScreenDidFailToLoad:self];
+                    }];   
                 }
                 else if (adType == kButtonAd)
                     _adPriority = kRevMobButtonAdPriority;
@@ -152,7 +174,6 @@ static int callBackCount;
         case kRevMob:{
             @try {
                 dispatch_async(dispatch_get_main_queue(), ^{
-                    
                     self.revMobBannerAdView = [[RevMobAds session] bannerView];
                     [self.revMobBannerAdView retain];
                     self.revMobBannerAdView.delegate = self;
@@ -166,6 +187,9 @@ static int callBackCount;
                     }
                     self.revMobBannerAdView.hidden = NO;
                     [[SNAdsManager getRootViewController].view addSubview:self.revMobBannerAdView];
+                    
+//                    self.revMobBannerAdTimer = [NSTimer scheduledTimerWithTimeInterval:kRevMobAdTimeOutThresholdValue target:self selector:@selector(revmobAdDidFailWithError:) userInfo:nil repeats:NO];
+//                    [self.revMobBannerAdTimer retain];
                });
             }
             @catch (NSException *exception) {
@@ -194,6 +218,9 @@ static int callBackCount;
                     dispatch_async(dispatch_get_main_queue(), ^{
                         self.revMobFullScreenAd.delegate = self;
                         [self.revMobFullScreenAd showAd];
+                        
+//                        self.revMobFullScreenAdTimer = [NSTimer scheduledTimerWithTimeInterval:kRevMobAdTimeOutThresholdValue target:self selector:@selector(revmobAdDidFailWithError:) userInfo:nil repeats:NO];
+//                        [self.revMobFullScreenAdTimer retain];
                     });
                 }
             }
@@ -204,6 +231,10 @@ static int callBackCount;
             break;
         case kMobiClix:{
             dispatch_async(dispatch_get_main_queue(), ^{
+                if (self.isRevMobFullScreenAlreadyShown) {
+                    NSLog(@"DID NOT LOAD MOBCLIX");
+                    return;
+                }
                 [self showMobClixFullScreenAd];
             }); 
         }
@@ -213,6 +244,12 @@ static int callBackCount;
                 self.chartBoost.delegate = self;
                 [self.chartBoost showInterstitial];
             });
+        }
+            break;
+        case kPlayHaven:{
+            count++;
+            NSLog(@"COunt for play HAVEN %d", count);
+            [self showPlayHavenFullScreenAd];
         }
             break;
         default:
@@ -230,7 +267,14 @@ static int callBackCount;
     [self.revMobBannerAdView removeFromSuperview];
 }
 
-
+- (void)showPlayHavenFullScreenAd{
+    NSLog(@"%s", __PRETTY_FUNCTION__);
+    NSLog(@"YAAY PLAY HAVEN");
+    PHPublisherContentRequest * request = [PHPublisherContentRequest requestForApp:kPlayHavenAppToken secret:kPlayHavenSecret placement:kPlayHavenPlacement delegate:self];
+    [request setShowsOverlayImmediately:YES];
+    [request setAnimated:YES];
+    [request send];
+}
 
 #pragma mark -
 #pragma mark MobClix Methods
@@ -268,11 +312,13 @@ static int callBackCount;
     
     [[SNAdsManager getRootViewController].view addSubview:adView];
     self.adView.delegate = self;
+    self.adView.refreshTime = 10;
     [self.adView resumeAdAutoRefresh];
 }
 -(void) showAd {
     if (!adView)
         [self newAd:CGPointMake(0,0)];
+    [[SNAdsManager getRootViewController].view addSubview:self.adView];
     [self.adView resumeAdAutoRefresh];
     [self.adView setHidden:NO];
     [self.adView getAd];
@@ -285,6 +331,7 @@ static int callBackCount;
     }
     [self.adView pauseAdAutoRefresh];
     [self.adView setHidden:YES];
+    [self.adView retain];
     [self.adView removeFromSuperview];
 }
 
@@ -319,26 +366,43 @@ static int callBackCount;
 
 }
 
-
+//TODO: This is not a good way to do this from what I can tell, but until 
 - (void)revmobAdDidFailWithError:(NSError *)error{
     NSLog(@" Hey hey hey %s", __PRETTY_FUNCTION__);
     if (self.adType == kBannerAd) {
-        [self.delegate revMobBannerDidFailToLoad:self];
-        [self.revMobBannerAdView removeFromSuperview];
-       // [[SNAdsManager sharedManager] revMobBannerDidFailToLoad:self];
+        NSLog(@"REVMOB BANNER FAILED");
+        
+            [self.delegate revMobBannerDidFailToLoad:self];
+            [self.revMobBannerAdView removeFromSuperview];
+//            [self.revMobBannerAdTimer invalidate];
+//            self.revMobBannerAdTimer = nil;
+        
     }else if (self.adType == kFullScreenAd){
-        [self.delegate revMobFullScreenDidFailToLoad:self];
+        NSLog(@"REVMOB FULLSCREEN FAILED");
+            [self.delegate revMobFullScreenDidFailToLoad:self];
+//            [self.revMobFullScreenAdTimer invalidate];
+//            self.revMobFullScreenAdTimer = nil;
     }
 }
 - (void)revmobAdDisplayed{
     NSLog(@"%s", __PRETTY_FUNCTION__);
+    
     if (self.adType == kBannerAd) {
         [self.delegate revMobBannerDidLoadAd:self];
+
     }else if (self.adType == kFullScreenAd){
+
         [self.delegate revMobFullScreenDidLoadAd:self];
+        self.isRevMobFullScreenAlreadyShown = YES;
+    }
+}
+- (void)revmobUserClosedTheAd{
+    if(self.adType == kFullScreenAd){
+        self.isRevMobFullScreenAlreadyShown = NO;
     }
 }
 - (void)revmobAdDidReceive{
+    
     NSLog(@"%s", __PRETTY_FUNCTION__);
     if (self.adType == kBannerAd) {
         [self.delegate revMobBannerDidLoadAd:self];
@@ -352,8 +416,8 @@ static int callBackCount;
     /**
      On every callback increment the callback count by one
      on second callback check if the difference between first and second call is more than 1.5 sec
-     If its more than 1.5 than most probably its a genuine failure callback
-     else if its less than 3.5 just ignore it
+     If its more than 4.5 than most probably its a genuine failure callback
+     else if its less than 4.5 just ignore it
      To make things quicker and not having to calculate nsdate instances everytime we're placing them in if else statements with respect to the callback counters.
      */
     callBackCount++;
@@ -366,7 +430,7 @@ static int callBackCount;
         double end = [now timeIntervalSince1970];
         double difference = end - firstCallBackTime;
         NSLog(@"Difference between calls is %f", difference);
-        if (difference > 3.5) {
+        if (difference > 4.5) {
             [self.delegate chartBoostFullScreenDidFailToLoad:self];
         }
     }else{
@@ -398,4 +462,31 @@ static int callBackCount;
     [self.delegate mobClixBannerDidFailToLoadBannerAd:self];
 }
 
+
+#pragma mark -
+#pragma mark Play Haven
+
+-(void)request:(PHPublisherContentRequest *)request contentDidDisplay:(PHContent *)content{
+    NSLog(@"%s", __PRETTY_FUNCTION__);
+    //[self.delegate playHavenFullScreenDidLoadAd:self];
+    
+}
+
+-(void)request:(PHPublisherContentRequest *)request didFailWithError:(NSError *)error{
+    if (self.hasPlayHavenAdLoaded) {
+        return;
+    }
+    self.hasPlayHavenAdLoaded = YES;
+    [self.delegate playHavenFullScreenDidFailToLoad:self];
+}
+
+
+-(void)requestDidGetContent:(PHPublisherContentRequest *)request{
+    self.hasPlayHavenAdLoaded = YES;
+}
+
+-(void)requestWillGetContent:(PHPublisherContentRequest *)request{
+    self.playHavenTimer = [NSTimer scheduledTimerWithTimeInterval:kPlayHavenAdTimeOutThresholdValue target:self selector:@selector(request:didFailWithError:) userInfo:nil repeats:NO];
+    self.hasPlayHavenAdLoaded = NO;
+}
 @end

@@ -12,6 +12,8 @@
 #import "MobclixFullScreenAdViewController.h"
 #import <RevMobAds/RevMobAds.h>
 #import "Chartboost.h"
+#import "PlayHavenSDK.h"
+
 @class MobclixAdView;
 @class RevMobFullscreen;
 @class RevMobBanner;
@@ -32,10 +34,13 @@
 - (void)revMobFullScreenDidLoadAd:(GenericAd *)ad;
 - (void)chartBoostFullScreenDidLoadAd:(GenericAd *)ad;
 - (void)mobClixFullScreenDidLoadAd:(GenericAd *)ad;
+
+- (void)playHavenFullScreenDidLoadAd:(GenericAd *)ad;
+- (void)playHavenFullScreenDidFailToLoad:(GenericAd *)ad;
 @end
 
 
-@interface GenericAd : NSObject <MobclixFullScreenAdDelegate, RevMobAdsDelegate, ChartboostDelegate, MobclixAdViewDelegate>
+@interface GenericAd : NSObject <MobclixFullScreenAdDelegate, RevMobAdsDelegate, ChartboostDelegate, MobclixAdViewDelegate, PHPublisherContentRequestDelegate>
 
 {
     MobclixFullScreenAdViewController* fullScreenAdViewController;
@@ -44,6 +49,7 @@ enum adNetworkType{
     kMobiClix,
     kChartBoost,
     kRevMob,
+    kPlayHaven,
     kUndefined
 };
 
@@ -65,6 +71,10 @@ enum adType{
 @property(nonatomic, assign)BOOL enableCaching;
 
 @property(nonatomic, strong) RevMobFullscreen *revMobFullScreenAd;
+@property(nonatomic, strong) NSTimer *revMobFullScreenAdTimer;
+@property(nonatomic, strong) NSTimer *revMobBannerAdTimer;
+
+@property(nonatomic, assign) BOOL isRevMobFullScreenAlreadyShown;
 //@property(nonatomic, strong) RevMobBanner *revMobBannerAd;
 @property(nonatomic, strong)RevMobAdLink *adLink;
 @property(nonatomic, strong) RevMobBannerView *revMobBannerAdView;

@@ -83,6 +83,15 @@
  Delegate Method to notify that MobClix Banner Ad has loaded.
  */
 - (void)mobClixBannerDidLoad;
+/**
+ Delegate Method to notify that PlayHaven FullScreen Ad has Failed to loaded.
+ */
+- (void)playHavenFullScreenDidFailToLoad;
+
+/**
+ Delegate Method to notify that PlayHaven FullScreen Ad has loaded.
+ */
+- (void)playHavenFullScreenDidLoad;
 @end
 
 
