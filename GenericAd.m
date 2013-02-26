@@ -178,18 +178,17 @@ static int callBackCount;
                     [self.revMobBannerAdView retain];
                     self.revMobBannerAdView.delegate = self;
                     [self.revMobBannerAdView loadAd];
-                    NSUInteger screenHeight = [[UIScreen mainScreen] bounds].size.height;
-                    NSUInteger screenWidth = [[UIScreen mainScreen] bounds].size.width;
+                    CGSize size = [GenericAd currentSize];
+                    NSUInteger screenHeight = size.height;
+                    NSUInteger screenWidth = size.width;
                     if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
-                        self.revMobBannerAdView.frame = CGRectMake(0, screenHeight - 114, screenWidth, 114);
+                        self.revMobBannerAdView.frame = CGRectMake(0, screenHeight-114, screenWidth, 114);
                     } else {
-                        self.revMobBannerAdView.frame = CGRectMake(0, screenHeight - 50, screenWidth, 50);
+                        self.revMobBannerAdView.frame = CGRectMake(0, screenHeight-50, screenWidth, 50);
                     }
                     self.revMobBannerAdView.hidden = NO;
                     [[SNAdsManager getRootViewController].view addSubview:self.revMobBannerAdView];
-                    
-//                    self.revMobBannerAdTimer = [NSTimer scheduledTimerWithTimeInterval:kRevMobAdTimeOutThresholdValue target:self selector:@selector(revmobAdDidFailWithError:) userInfo:nil repeats:NO];
-//                    [self.revMobBannerAdTimer retain];
+                    [[SNAdsManager getRootViewController].view bringSubviewToFront:self.revMobBannerAdView];
                });
             }
             @catch (NSException *exception) {
@@ -208,6 +207,8 @@ static int callBackCount;
         break;
     }
 }
+
+
 -(void)showFullScreenAd{
     NSLog(@"%s", __PRETTY_FUNCTION__);
     switch(self.adNetworkType){
@@ -218,9 +219,6 @@ static int callBackCount;
                     dispatch_async(dispatch_get_main_queue(), ^{
                         self.revMobFullScreenAd.delegate = self;
                         [self.revMobFullScreenAd showAd];
-                        
-//                        self.revMobFullScreenAdTimer = [NSTimer scheduledTimerWithTimeInterval:kRevMobAdTimeOutThresholdValue target:self selector:@selector(revmobAdDidFailWithError:) userInfo:nil repeats:NO];
-//                        [self.revMobFullScreenAdTimer retain];
                     });
                 }
             }
@@ -260,7 +258,24 @@ static int callBackCount;
 -(void)showLinkButtonAd{
     [self.adLink openLink];
 }
-
++(CGSize) sizeInOrientation:(UIInterfaceOrientation)orientation
+{
+    CGSize size = [UIScreen mainScreen].bounds.size;
+    UIApplication *application = [UIApplication sharedApplication];
+    if (UIInterfaceOrientationIsLandscape(orientation))
+    {
+        size = CGSizeMake(size.height, size.width);
+    }
+    if (application.statusBarHidden == NO)
+    {
+        size.height -= MIN(application.statusBarFrame.size.width, application.statusBarFrame.size.height);
+    }
+    return size;
+}
++(CGSize) currentSize
+{
+    return [GenericAd sizeInOrientation:[UIApplication sharedApplication].statusBarOrientation];
+}
 -(void)hideBannerAd{
     //[self.revMobBannerAd hideAd];
     self.revMobBannerAdView.hidden = YES;
@@ -268,8 +283,8 @@ static int callBackCount;
 }
 
 - (void)showPlayHavenFullScreenAd{
-    NSLog(@"%s", __PRETTY_FUNCTION__);
-    NSLog(@"YAAY PLAY HAVEN");
+    DebugLog(@"%s", __PRETTY_FUNCTION__);
+    DebugLog(@"YAAY PLAY HAVEN");
     PHPublisherContentRequest * request = [PHPublisherContentRequest requestForApp:kPlayHavenAppToken secret:kPlayHavenSecret placement:kPlayHavenPlacement delegate:self];
     [request setShowsOverlayImmediately:YES];
     [request setAnimated:YES];
@@ -407,7 +422,7 @@ static int callBackCount;
     if (self.adType == kBannerAd) {
         [self.delegate revMobBannerDidLoadAd:self];
     }else if (self.adType == kFullScreenAd){
-        //[self.delegate revMobFullScreenDidLoadAd:self];
+        [self.delegate revMobFullScreenDidLoadAd:self];
     }
 }
 - (void)didFailToLoadInterstitial:(NSString *)location{

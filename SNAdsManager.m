@@ -11,7 +11,6 @@
 #import "Reachability.h"
 #import "Mobclix.h"
 #import "SNQueue.h"
-#import "AppDelegate.h"
 #import "TapjoyConnect.h"
 
 
@@ -162,7 +161,9 @@ static SNAdsManager *sharedManager = nil;
     }
 }
 + (UIViewController *)getRootViewController{
-    return [UIApplication sharedApplication].keyWindow.rootViewController;
+    UIViewController *rootViewController = [UIApplication sharedApplication].keyWindow.rootViewController;
+    NSAssert(rootViewController, @"RootView Controller cannot be nil");
+    return rootViewController;
 }
 
 /**
@@ -328,8 +329,8 @@ static SNAdsManager *sharedManager = nil;
 -(void)startMobclix {
     NSLog(@"%s", __PRETTY_FUNCTION__);
     dispatch_async(dispatch_get_main_queue(), ^{
-        [Mobclix startWithApplicationId:MOBCLIX_ID];
-      //  [Mobclix startWithApplicationId:@"insert-your-application-key"];
+       // [Mobclix startWithApplicationId:MOBCLIX_ID];
+        [Mobclix startWithApplicationId:@"insert-your-application-key"];
     });
 }
 
@@ -350,7 +351,7 @@ static SNAdsManager *sharedManager = nil;
 - (void)startRevMob{
     [RevMobAds startSessionWithAppID: kRevMobId];
     [RevMobAds session].connectionTimeout = 10;
-//    [RevMobAds session].testingMode = RevMobAdsTestingModeWithAds;
+    [RevMobAds session].testingMode = RevMobAdsTestingModeWithAds;
 //    }
 }
 
@@ -423,11 +424,6 @@ static SNAdsManager *sharedManager = nil;
     NSArray *sortedArray;
     sortedArray = [fullScreenAdsInBucket sortedArrayUsingDescriptors:sortDescriptors];
     
-    if ([self.currentAdsBucketArray count] >= 1) {//Check Ad Bucket is not empty
-        for (GenericAd *genAd in sortedArray) {
-            NSLog(@"Priority is %d", genAd.adPriority);
-        }
-    }
     self.sortedFullScreenAdsArray = sortedArray;
 }
 
@@ -559,13 +555,7 @@ static SNAdsManager *sharedManager = nil;
     NSArray *sortDescriptors = [NSArray arrayWithObject:sortDescriptor];
     NSArray *sortedArray;
     sortedArray = [fullScreenAdsInBucket sortedArrayUsingDescriptors:sortDescriptors];
-    
-    if ([self.currentAdsBucketArray count] >= 1) {//Check Ad Bucket is not empty
-        for (GenericAd *genAd in sortedArray) {
-            NSLog(@"Priority is %d", genAd.adPriority);
-            NSLog(@"Ad Network Type is %d", genAd.adNetworkType);
-        }
-    }
+  
     self.sortedFullScreenAdsArray = sortedArray;
     ad = [fullScreenAdsInBucket objectAtIndex:0];
     if ([ad respondsToSelector:@selector(showFullScreenAd)]) {
