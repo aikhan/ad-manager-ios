@@ -85,20 +85,6 @@ typedef NS_ENUM(NSUInteger, ConnectionStatus) {
 #define kPlayHavenFullScreenAdPriority kPriorityNORMAL
 
 
-//#define kRevMobBannerAdPriority kPriorityLOWEST  //In Game banner Ads
-//#define kRevMobFullScreenAdPriority kPriorityNORMAL //Full Screen Pop-ups
-//#define kRevMobButtonAdPriority kPriorityHIGHEST //Button ads this is not currently used in games, its just a wrapper on Link Ads
-//#define kRevMobLinkAdPriority kPriorityHIGHEST  //This is the Ad that is displayed on buttons on game over screens
-//#define kRevMobPopAdPriority kPriorityHIGHEST  //UIAlert type pop-up Ads in games
-//#define kRevMobLocalNotificationAdPriority kPriorityHIGHEST // UILocalNotification Ads //Currently we're not using it
-//
-//#define kChartBoostFullScreeAdPriority kPriorityNORMAL
-//#define kChartBoostMoreAppsAd kPriorityHIGHEST
-//
-//#define kMobClixBannerAdPriority kPriorityHIGHEST
-//#define kMobClixFullScreenAdPriority kPriorityHIGHEST
-
-
 
 #define kNumberOfAdNetworks 5
 

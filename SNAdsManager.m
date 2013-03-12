@@ -198,7 +198,10 @@ static SNAdsManager *sharedManager = nil;
         [self addAdRequestToQueue:_cmd];
         return;
     }
-    [[RevMobAds session] showFullscreen];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [[RevMobAds session] showFullscreen];
+    });
+    
 }
 - (void) giveMeBannerRevMobAd{
     if (!self.haveAdNetworksInitialized) {
@@ -329,8 +332,8 @@ static SNAdsManager *sharedManager = nil;
 -(void)startMobclix {
     NSLog(@"%s", __PRETTY_FUNCTION__);
     dispatch_async(dispatch_get_main_queue(), ^{
-       // [Mobclix startWithApplicationId:MOBCLIX_ID];
-        [Mobclix startWithApplicationId:@"insert-your-application-key"];
+        [Mobclix startWithApplicationId:MOBCLIX_ID];
+       // [Mobclix startWithApplicationId:@"insert-your-application-key"];
     });
 }
 
@@ -351,7 +354,7 @@ static SNAdsManager *sharedManager = nil;
 - (void)startRevMob{
     [RevMobAds startSessionWithAppID: kRevMobId];
     [RevMobAds session].connectionTimeout = 10;
-    [RevMobAds session].testingMode = RevMobAdsTestingModeWithAds;
+ //   [RevMobAds session].testingMode = RevMobAdsTestingModeWithAds;
 //    }
 }
 
@@ -582,6 +585,7 @@ static SNAdsManager *sharedManager = nil;
 
 - (void)giveMeGameOverAd{
     [self giveMeFullScreenAd];
+    [self giveMeFullScreenRevMobAd];
 }
 
 - (void)giveMeThirdGameOverAd{
@@ -590,15 +594,18 @@ static SNAdsManager *sharedManager = nil;
     NSLog(@"game over counter %d", gameOverCount);
     if (gameOverCount %3 == 0){
         [self giveMeFullScreenAd];
+        [self giveMeFullScreenRevMobAd];
     }
 }
 
 - (void)giveMeBootUpAd{
     [self giveMeFullScreenAd];
+    [self giveMeFullScreenRevMobAd];
 }
 - (void)giveMeWillEnterForegroundAd{
     [[PHPublisherOpenRequest requestForApp:kPlayHavenAppToken secret:kPlayHavenSecret] send];
     [self giveMeFullScreenAd];
+    [self giveMeFullScreenRevMobAd];
 }
 -(void) giveMePaidFullScreenAd{
     [self giveMeFullScreenChartBoostAd];

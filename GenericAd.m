@@ -277,9 +277,11 @@ static int callBackCount;
     return [GenericAd sizeInOrientation:[UIApplication sharedApplication].statusBarOrientation];
 }
 -(void)hideBannerAd{
-    //[self.revMobBannerAd hideAd];
+    
     self.revMobBannerAdView.hidden = YES;
     [self.revMobBannerAdView removeFromSuperview];
+    self.revMobBannerAdView = nil;
+   // self.revMobBannerAdView.frame = CGRectMake(-400, -400, -400, -400);
 }
 
 - (void)showPlayHavenFullScreenAd{
