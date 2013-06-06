@@ -138,18 +138,27 @@ static int callBackCount;
     return self;
 }
 
+
 -(void)showBannerAdAtTop{
     switch(self.adNetworkType){
         case kRevMob:{
             @try {
                 dispatch_async(dispatch_get_main_queue(), ^{
-                    NSUInteger screenWidth = [[UIScreen mainScreen] bounds].size.width;
+                    self.revMobBannerAdView = [[RevMobAds session] bannerView];
+                    [self.revMobBannerAdView retain];
+                    self.revMobBannerAdView.delegate = self;
+                    [self.revMobBannerAdView loadAd];
+                    CGSize size = [GenericAd currentSize];
+                    // NSUInteger screenHeight = size.height;
+                    NSUInteger screenWidth = size.width;
                     if (UI_USER_INTERFACE_IDIOM() == UIUserInterfaceIdiomPad) {
-                        self.revMobBannerAdView.frame = CGRectMake(0, 0, screenWidth, 114);
+                        self.revMobBannerAdView.frame = CGRectMake(180, 0, screenWidth * 0.70, 114);
                     } else {
-                        self.revMobBannerAdView.frame = CGRectMake(0, 0, screenWidth, 50);
+                        self.revMobBannerAdView.frame = CGRectMake(100, 0, screenWidth * 0.70, 50);
                     }
-                        [[SNAdsManager getRootViewController].view addSubview:self.revMobBannerAdView];
+                    self.revMobBannerAdView.hidden = NO;
+                    [[SNAdsManager getRootViewController].view addSubview:self.revMobBannerAdView];
+                    [[SNAdsManager getRootViewController].view bringSubviewToFront:self.revMobBannerAdView];
                 });
             }
             @catch (NSException *exception) {

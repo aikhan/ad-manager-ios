@@ -119,29 +119,7 @@
 - (void) giveMeFullScreenAd;
 - (void) giveMeLinkAd;
 - (void) giveMeMoreAppsAd;
-
-- (void) hideBannerAd;
-
-/*
- * Call ChartBoost Methods Directly, methods are just empty stubs calling ChartBoost counterparts
- */
-- (void) giveMeFullScreenChartBoostAd;
-- (void) giveMeMoreAppsChartBoostAd;
-
-/*
- * Call RevMob Methods Directly, methods are just empty stubs calling RevMob counterparts
- */
-- (void) giveMeFullScreenRevMobAd;
-- (void) giveMeBannerRevMobAd;
-- (void) giveLinkRevMobAd;
-
-
-/*
- * Call Mobclix Methods Directly, methods are just empty stubs calling mobclix counterparts
- */
-- (void) giveMeBannerMobclixAd;
-- (void) giveMeFullScreenMobClixAd;
-
+- (void) hideBannerAd;/* */
 
 /**
  Further Methods to ease usage

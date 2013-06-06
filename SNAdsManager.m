@@ -12,6 +12,10 @@
 #import "Mobclix.h"
 #import "SNQueue.h"
 #import "TapjoyConnect.h"
+#import "SettingsManager.h"
+#import "RootViewController.h"
+
+
 
 
 static NSUInteger gameOverCount = 0;
@@ -162,8 +166,10 @@ static SNAdsManager *sharedManager = nil;
 }
 + (UIViewController *)getRootViewController{
     UIViewController *rootViewController = [UIApplication sharedApplication].keyWindow.rootViewController;
+    rootViewController = [SettingsManager sharedManager].rootViewController;
     NSAssert(rootViewController, @"RootView Controller cannot be nil");
     return rootViewController;
+   // return (RootViewController*)[(testAppDelegate*)[[UIApplication sharedApplication] delegate] rootVC];
 }
 
 /**
@@ -354,7 +360,7 @@ static SNAdsManager *sharedManager = nil;
 - (void)startRevMob{
     [RevMobAds startSessionWithAppID: kRevMobId];
     [RevMobAds session].connectionTimeout = 10;
- //   [RevMobAds session].testingMode = RevMobAdsTestingModeWithAds;
+   // [RevMobAds session].testingMode = RevMobAdsTestingModeWithAds;
 //    }
 }
 
@@ -706,8 +712,16 @@ static SNAdsManager *sharedManager = nil;
     [self loadBannerAdWithLowerPriorityhanPreviousAd:ad];
 }
 - (void)mobClixBannerDidLoadAd:(GenericAd *)ad{
-    if ([self.delegate respondsToSelector:@selector(bannerAdDidLoad)]) {
-        [self.delegate bannerAdDidLoad];
+    @try {
+        if ([self.delegate respondsToSelector:@selector(bannerAdDidLoad)]) {
+            [self.delegate bannerAdDidLoad];
+        }
+    }
+    @catch (NSException *exception) {
+        NSLog(@"%@", exception.reason);
+    }
+    @finally {
+        //
     }
 }
 
